@@ -12,7 +12,10 @@ api_key, base_url = st.secrets["API_KEY"], st.secrets["BASE_URL"]
 selected_model = "google/gemma-3-1b-it:free"
 
 if "messages" not in st.session_state:
-    st.session_state["messages"] = [{"role": "assistant", "content": "How can I help you?"}]
+    st.session_state["messages"] = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": f"You are a helpful assistant."},
+    ]
 
 for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg["content"])

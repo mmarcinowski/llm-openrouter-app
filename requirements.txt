@@ -1,2 +1,11 @@
-streamlit
+faiss-cpu
+langchain
+langchain_community
+numpy
 openai
+pandas
+PyMuPDF
+pytest
+streamlit
+tiktoken
+watchdog
