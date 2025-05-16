@@ -1,9 +1,9 @@
 import streamlit as st
-from src.chat_openrouter import ChatOpenRouter
+from chat_openrouter import ChatOpenRouter
 import os
 import shutil
 from docloader import load_documents_from_folder
-from embedder import create_index, retrieve_documents
+from embedder import create_index, retrieve_docs
 
 st.set_page_config(layout="wide", page_title="OpenRouter chatbot app")
 st.title("OpenRouter chatbot app")
@@ -28,10 +28,21 @@ def answer_question(question, documents, model):
     chain = prompt | model
     return chain.invoke({"question": question, "context": context})
 
-# File uploader
+if "query" not in st.session_state:
+    st.session_state.query = ""
+if "answer" not in st.session_state:
+    st.session_state.answer = ""
+if "clear_files" not in st.session_state:
+    st.session_state.clear_files = False
+if "retrieve_files" not in st.session_state:
+    st.session_state.retrieve_files = False
+if "faiss_index" not in st.session_state:
+    st.session_state.faiss_index = None
+
 uploaded_files = st.sidebar.file_uploader("Upload PDF(s)", type=["pdf"], accept_multiple_files=True, key="file_uploader")
 
-if st.sidebar.button("Clear Uploaded Files"):
+clear_files = st.sidebar.button("Clear files")
+if clear_files:
     shutil.rmtree(UPLOAD_FOLDER)
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     st.session_state.clear_files = True
@@ -42,6 +53,7 @@ if st.sidebar.button("Clear Uploaded Files"):
 if st.session_state.clear_files:
     uploaded_files = None
     st.session_state.clear_files = False
+    st.session_state.retrieve_files = False
 
 if uploaded_files:
     for uploaded_file in uploaded_files:
@@ -49,13 +61,14 @@ if uploaded_files:
         with open(file_path, "wb") as f:
             f.write(uploaded_file.getbuffer())
     st.success("Files uploaded successfully!")
-
     documents = load_documents_from_folder(UPLOAD_FOLDER)
-    faiss_index = create_index(documents)
+    st.session_state.faiss_index = create_index(documents)
+    st.session_state.retrieve_files = True
+
 
 if "messages" not in st.session_state:
     st.session_state["messages"] = [
-        {"role": "system", "content": "You are a helpful assistant."}
+        {"role": "system", "content": "How can I help you?"}
     ]
 
 for msg in st.session_state.messages:
@@ -64,10 +77,11 @@ for msg in st.session_state.messages:
 if question := st.chat_input():
     st.session_state.messages.append({"role": "user", "content": question})
     st.chat_message("user").write(question)
-    related_documents = retrieve_docs(question)
-    if uploaded_files:
-        answer = answer_question(question, related_documents, model)
+    if st.session_state.retrieve_files:
+        with st.spinner("Generating answer", show_time=True):
+            related_documents = retrieve_docs(question, st.session_state.faiss_index)
+            answer = answer_question(question, related_documents, model)
     else:
         answer = model.invoke(question)
-    st.session_state.messages.append({"role": "assistant", "content": answer})
+    st.session_state.messages.append({"role": "assistant", "content": answer.content[0]})
     st.chat_message("assistant").write(answer)

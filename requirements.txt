@@ -1,6 +1,7 @@
 faiss-cpu
 langchain
-langchain_community
+langchain_huggingface
+langchain_openai
 numpy
 openai
 pandas

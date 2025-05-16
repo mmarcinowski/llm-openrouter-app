@@ -1,6 +1,6 @@
 import faiss
 import numpy as np
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 class FAISSIndex:
     def __init__(self, faiss_index, metadata):
@@ -14,8 +14,11 @@ class FAISSIndex:
             results.append(self.metadata[idx])
         return results
 
+embed_model_id = 'intfloat/e5-small-v2'
+model_kwargs = {"device": "cpu", "trust_remote_code": True}
+
 def create_index(documents):
-    embeddings = OpenAIEmbeddings()
+    embeddings = HuggingFaceEmbeddings(model_name=embed_model_id, model_kwargs=model_kwargs)
     texts = [doc["text"] for doc in documents]
     metadata = [{"filename": doc["filename"], "text": doc["text"]} for doc in documents]
 
@@ -30,8 +33,8 @@ def create_index(documents):
     # Return a FAISSIndex object that contains both the index and metadata
     return FAISSIndex(index, metadata)
 
-def retrieve_documents(query, faiss_index, k=3):
-    embeddings = OpenAIEmbeddings()
+def retrieve_docs(query, faiss_index, k=3):
+    embeddings = HuggingFaceEmbeddings(model_name=embed_model_id, model_kwargs=model_kwargs)
     query_embedding = np.array([embeddings.embed_query(query)]).astype("float32")
     results = faiss_index.similarity_search(query_embedding, k=k)
     return results
